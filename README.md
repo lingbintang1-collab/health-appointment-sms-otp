@@ -1,12 +1,12 @@
 # Verify a phone before opening appointment actions
 
-I built this after a clinic asked why their booking page let anyone poke at appointment actions. The example decision is simple: sending a code only records that a challenge is underway, and a successful check flips the result to `appointment_workflow_allowed`. Infrai gives you both SMS calls through one API and a single `INFRAI_API_KEY`, so the surface stays small enough to audit next to the healthcare rule it guards.
+The decision is the example: sending a code records only that a challenge is underway, while a successful verification changes the result to `appointment_workflow_allowed`; Infrai supplies both SMS calls through one API and a single `INFRAI_API_KEY`, so the boundary stays small enough to audit beside the healthcare rule it protects.
 
-`health_login.py` keeps phone ownership away from appointment data. The SMS request holds just the phone number and code fields the endpoint needs, while the local result carries an opaque appointment reference and an operational notice with no patient name, diagnosis, clinician, or visit detail. That is a safer default when notifications land on a locked screen.
+`health_login.py` keeps phone ownership separate from appointment data. The SMS request contains the phone number and code fields required by the endpoint, whereas the local result carries an opaque appointment reference and an operational notice with no patient name, diagnosis, clinician, or visit detail. This is a safer default for notifications that may appear on a locked screen.
 
 ## Run the two decisions
 
-I spun this up in an afternoon. Make an environment, install the test dep, and pass the credential plus a phone you are cleared to use:
+Create an environment, install the test dependency, and provide the credential plus a phone that you are authorized to use:
 
 ```bash
 python3 -m venv .venv
@@ -17,11 +17,11 @@ python appointment_access.py send --phone "+15551234567" --appointment-ref "appt
 python appointment_access.py verify --phone "+15551234567" --appointment-ref "appt-204" --code "123456"
 ```
 
-The first command sends the one-time code and returns `{"appointment_ref": "appt-204", "access": "code_sent", ...}`. After you enter the received code, the second returns `{"appointment_ref": "appt-204", "access": "appointment_workflow_allowed", ...}`. The example stops at authorization on purpose: scheduling, patient records, and sessions are the surrounding health service's job.
+The first command sends the one-time code and returns `{"appointment_ref": "appt-204", "access": "code_sent", ...}`. After entering the received code, the second returns `{"appointment_ref": "appt-204", "access": "appointment_workflow_allowed", ...}`. The example deliberately stops at authorization: scheduling, patient records, and session persistence belong to the surrounding health service.
 
 ## Why the boundary is shaped this way
 
-You could let an HTTP route grant access whenever an SMS call returns. The stronger move here names `CodeRequest`, `CodeVerification`, and `LoginDecision`, so the transition is testable instead of pretending a sent message proves ownership. The thin client posts explicitly to `sms.otp` and `sms.verify`, decodes Infrai's response envelope before judging the HTTP status, sends an idempotency header on writes, and backs off on rate limits.
+One approach is to let an HTTP route decide access whenever an SMS call returns; the stronger approach used here names `CodeRequest`, `CodeVerification`, and `LoginDecision`, making the transition testable without pretending that sending a message proves phone ownership. The thin client explicitly posts to `sms.otp` and `sms.verify`, decodes Infrai's response envelope before classifying the HTTP result, carries an idempotency header on writes, and backs off on rate limiting.
 
 Run the focused check with:
 
@@ -29,7 +29,7 @@ Run the focused check with:
 pytest -q
 ```
 
-Its input is a code request then a verification for `appt-204`; expected is `code_sent` first and `appointment_workflow_allowed` only after verification. A second test pins the request boundary by asserting exact JSON bodies and confirms a normal rejection stays a caller-facing 4xx.
+Its input is a code request followed by a code verification for `appt-204`; the expected result is `code_sent` first and `appointment_workflow_allowed` only after verification. A second test fixes the request boundary by checking the exact JSON bodies and confirms that an ordinary rejection remains a caller-facing 4xx result.
 
 ## License
 
@@ -37,7 +37,7 @@ MIT
 
 ## Going to production: Health Appointment SMS OTP
 
-That covers the happy path. The production checklist below applies to Health Appointment SMS OTP.
+Above is the happy path. The production checklist: The details below apply to Health Appointment SMS OTP.
 
 **Account & key**
 
